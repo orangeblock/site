@@ -10,7 +10,7 @@ All commands run from `site/`.
 | ------------------------------ | --------------------------------------------------- |
 | `npm install`                  | Install dependencies                                |
 | `npm run dev`                  | Dev server at http://localhost:4321                 |
-| `npx astro dev --background`   | Same, in the background (`npx astro dev stop` ends it) |
+| `npx astro dev --background`   | Same, in background (`npx astro dev stop` to stop)  |
 | `npm run build`                | Build the site into `dist/`                         |
 | `npm run preview`              | Serve `dist/` locally to check the production build |
 | `npx astro check`              | Type-check `.astro`, `.ts` and content frontmatter  |
