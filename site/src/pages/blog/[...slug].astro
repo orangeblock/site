@@ -1,0 +1,28 @@
+---
+import { render } from 'astro:content';
+import Article from '../../layouts/Article.astro';
+import { formatDate, getPosts, tagUrl } from '../../lib';
+
+export async function getStaticPaths() {
+	const posts = await getPosts();
+	return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<Article title={post.data.title}>
+	<Fragment slot="meta">
+		<time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+		{
+			post.data.tags.map((tag, i) => (
+				<>
+					{i === 0 ? ' · ' : ', '}
+					<a href={tagUrl(tag)}>{tag}</a>
+				</>
+			))
+		}
+	</Fragment>
+	<Content />
+</Article>

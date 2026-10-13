@@ -1,0 +1,91 @@
+---
+title: Sample post showing every content element
+date: 2026-10-13
+tags: [meta, rendering]
+---
+
+import Figure from '../../../components/Figure.astro';
+import Wide from '../../../components/Wide.astro';
+import Embed from '../../../components/Embed.astro';
+import Scene from '../../../components/Scene.astro';
+import grid from './grid.png';
+
+This is a sample post to check styling. Delete it once real posts exist. Most stutter isn't slow code, it's [work landing in the wrong frame](https://web.dev/articles/rendering-performance). At 60 fps the browser gives you roughly 16.7 milliseconds per frame, and style, layout, paint and compositing all want a share of that before your script runs.[^1]
+
+The fix is usually to call `requestAnimationFrame` less, not more. Batch reads before writes and let the compositor handle anything that only changes `transform` or `opacity`.[^2]
+
+## Images
+
+<Figure src={grid} alt="Grid with a diagonal amber line" caption="Default figure. Follows the text column." />
+
+<Figure src={grid} alt="Grid with a diagonal amber line" caption="Wide figure, opt-in." wide />
+
+## Code
+
+A normal code block:
+
+```python
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+
+# ~16.7 ms per frame at 60 fps
+FRAME_BUDGET_MS = 1000 / 60
+
+
+@dataclass(frozen=True)
+class Mesh:
+    """Triangle mesh loaded from a .obj file."""
+    vertices: np.ndarray
+    faces: np.ndarray
+
+    @classmethod
+    def load(cls, path: Path) -> "Mesh":
+        verts, faces = [], []
+        for line in path.read_text().splitlines():
+            if line.startswith("v "):
+                verts.append([float(x) for x in line.split()[1:4]])
+        return cls(np.array(verts), np.array(faces, dtype=np.int32))
+```
+
+A wide one for long lines:
+
+<Wide>
+
+```python
+faces.append([int(i.split("/")[0]) - 1 for i in line.split()[1:4]])  # .obj indices are 1-based and may include texture/normal refs
+```
+
+</Wide>
+
+```yaml
+# build and deploy settings
+site:
+  name: dan
+  url: https://example.com
+build:
+  images:
+    formats: [avif, webp]
+    widths: [640, 1280, 1920]
+deploy:
+  swap_mb: 1024
+  dry_run: false
+```
+
+## Embeds
+
+<Embed src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ" title="Big Buck Bunny" caption="Nothing loads from YouTube until you click." />
+
+## 3D
+
+<Scene name="cube" alt="Rotating wireframe cube" caption="three.js loads only when this scrolls into view." wide />
+
+> Blockquotes look like this.
+
+- Lists
+- look
+- like this
+
+[^1]: On a 120 Hz display the budget halves to about 8.3 ms.
+[^2]: Properties that only touch the compositor skip layout and paint entirely.

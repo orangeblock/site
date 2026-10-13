@@ -1,0 +1,14 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectList from '../../components/ProjectList.astro';
+import { getProjects } from '../../lib';
+
+const projects = await getProjects();
+---
+
+<Base title="projects">
+	<section class="list-section">
+		<h1 class="section-label">projects</h1>
+		<ProjectList projects={projects} />
+	</section>
+</Base>

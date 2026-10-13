@@ -1,0 +1,24 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatMonth } from '../lib';
+
+interface Props {
+	projects: CollectionEntry<'projects'>[];
+}
+
+const { projects } = Astro.props;
+---
+
+<ul class="list">
+	{
+		projects.map((project) => (
+			<li>
+				<span class="date">{formatMonth(project.data.date)}</span>
+				<a class="title" href={`/projects/${project.id}/`}>
+					{project.data.title}
+				</a>
+				<span class="desc">{project.data.description}</span>
+			</li>
+		))
+	}
+</ul>

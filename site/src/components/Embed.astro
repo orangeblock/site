@@ -1,0 +1,85 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+interface Props {
+	/** The player's embed URL, e.g. https://www.youtube-nocookie.com/embed/<id> */
+	src: string;
+	title: string;
+	/** Local image only, so nothing is fetched from the third party before a click. */
+	thumbnail?: ImageMetadata;
+	caption?: string;
+	wide?: boolean;
+	aspect?: string;
+}
+
+const { src, title, thumbnail, caption, wide = false, aspect = '16 / 9' } = Astro.props;
+---
+
+<figure class:list={[{ wide }]}>
+	<div class="embed" style={`aspect-ratio: ${aspect}`} data-src={src} data-title={title}>
+		<button type="button" aria-label={`Load ${title}`}>
+			{thumbnail && <Image src={thumbnail} alt="" widths={[640, 1280]} sizes="(max-width: 909px) 100vw, 877px" />}
+			<span class="label">▶ {title}</span>
+		</button>
+	</div>
+	{caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+	.embed {
+		position: relative;
+		background: var(--surface);
+		border: 1px solid var(--border);
+	}
+	.embed button,
+	.embed :global(iframe) {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		border: 0;
+	}
+	.embed button {
+		padding: 0;
+		background: none;
+		color: var(--text);
+		cursor: pointer;
+		display: grid;
+		place-items: center;
+	}
+	.embed img {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.label {
+		position: relative;
+		font-family: var(--mono);
+		font-size: 14px;
+		background: var(--bg);
+		border: 1px solid var(--border);
+		padding: 6px 12px;
+		transition: border-color 120ms;
+	}
+	.embed button:hover .label {
+		border-color: var(--accent);
+	}
+</style>
+
+<script>
+	for (const embed of document.querySelectorAll<HTMLElement>('.embed')) {
+		embed.querySelector('button')?.addEventListener('click', () => {
+			const url = new URL(embed.dataset.src!);
+			url.searchParams.set('autoplay', '1');
+			const iframe = document.createElement('iframe');
+			iframe.src = url.toString();
+			iframe.title = embed.dataset.title!;
+			iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+			iframe.allowFullscreen = true;
+			embed.replaceChildren(iframe);
+		});
+	}
+</script>

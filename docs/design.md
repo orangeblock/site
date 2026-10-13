@@ -104,8 +104,9 @@ Custom Shiki theme ("balanced"), applied at build time:
 ## Repo layout
 
 ```
-site/    Astro site
+site/    Astro site (npm)
 api/     FastAPI app (later)
+deploy/  Caddyfile and deploy script
 docs/    Design and planning docs
 ```
 
@@ -125,10 +126,5 @@ docs/    Design and planning docs
 - FastAPI scope and how projects are served.
 - Domain, DNS, and CDN setup.
 - Site name in the header.
-
-## Not yet decided
-
-- Node package manager (npm, pnpm, or bun) and Node version.
 - 404 page.
 - Favicon.
-- Where the Caddyfile and deploy script live in the repo.

@@ -1,0 +1,27 @@
+---
+import Base from '../../../layouts/Base.astro';
+import PostList from '../../../components/PostList.astro';
+import { getPosts, tagSlug } from '../../../lib';
+
+export async function getStaticPaths() {
+	const posts = await getPosts();
+	const tags = new Map<string, string>();
+	for (const post of posts) {
+		for (const tag of post.data.tags) tags.set(tagSlug(tag), tag);
+	}
+	return [...tags].map(([slug, tag]) => ({
+		params: { tag: slug },
+		props: { tag, posts: posts.filter((post) => post.data.tags.some((t) => tagSlug(t) === slug)) },
+	}));
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<Base title={tag}>
+	<section class="list-section">
+		<h1 class="section-label">tag: {tag}</h1>
+		<PostList posts={posts} />
+		<a class="more" href="/blog/tags/">all tags</a>
+	</section>
+</Base>

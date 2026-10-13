@@ -1,0 +1,42 @@
+---
+import { Font } from 'astro:assets';
+import { SITE_NAME } from '../lib';
+import '../styles/global.css';
+
+interface Props {
+	title?: string;
+}
+
+const { title } = Astro.props;
+const pageTitle = title ? `${title} · ${SITE_NAME}` : SITE_NAME;
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{pageTitle}</title>
+		<link rel="alternate" type="application/rss+xml" title={SITE_NAME} href="/rss.xml" />
+		<Font cssVariable="--font-sans" preload={[{ weight: '400', style: 'normal' }]} />
+		<Font cssVariable="--font-mono" preload={[{ weight: '400', style: 'normal' }]} />
+	</head>
+	<body>
+		<div class="wrap">
+			<header class="site">
+				<a class="name" href="/">{SITE_NAME}/</a>
+				<nav>
+					<a href="/blog/">blog</a>
+					<a href="/projects/">projects</a>
+					<a href="/about/">about</a>
+					<a href="/rss.xml">rss</a>
+				</nav>
+			</header>
+			<main>
+				<slot />
+			</main>
+			<footer class="site">
+				© {new Date().getFullYear()} {SITE_NAME} · <a href="/rss.xml">rss</a>
+			</footer>
+		</div>
+	</body>
+</html>

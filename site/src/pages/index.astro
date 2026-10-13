@@ -1,0 +1,25 @@
+---
+import Base from '../layouts/Base.astro';
+import PostList from '../components/PostList.astro';
+import ProjectList from '../components/ProjectList.astro';
+import { getPosts, getProjects } from '../lib';
+
+const posts = (await getPosts()).slice(0, 5);
+const projects = (await getProjects()).slice(0, 3);
+---
+
+<Base>
+	<p class="intro">One line about who you are and what this site is.</p>
+
+	<section class="list-section">
+		<h2 class="section-label">blog</h2>
+		<PostList posts={posts} />
+		<a class="more" href="/blog/">all posts</a>
+	</section>
+
+	<section class="list-section">
+		<h2 class="section-label">projects</h2>
+		<ProjectList projects={projects} />
+		<a class="more" href="/projects/">all projects</a>
+	</section>
+</Base>
