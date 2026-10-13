@@ -52,6 +52,22 @@ Body text in Markdown.[^1]
 
 `title` and `date` are required, `tags` is optional. Each tag gets a page at `/blog/tags/<tag>/`, and `/blog/tags/` lists them all. Plain `.md` works too if the post uses no components.
 
+### Fixed URLs
+
+By default the URL comes from the file path, so moving or renaming the file changes it. To pin the URL, add `slug` to the frontmatter:
+
+```mdx
+---
+title: On frame budgets
+date: 2026-10-13
+slug: frame-budgets
+---
+```
+
+The post is then served at `/blog/frame-budgets/` wherever the file lives. Slugs may contain lowercase letters, digits, hyphens and slashes; anything else fails the build. `slug` works the same way for projects.
+
+Slugs must be unique within a collection. If two entries share one, the build only prints a `multiple entries with the same slug` warning and one entry silently replaces the other.
+
 ### Components
 
 Import the components you need at the top of the `.mdx` file, below the frontmatter. The path depends on how deep the file is; from `src/content/blog/<slug>/index.mdx` it is `../../../components/`.
