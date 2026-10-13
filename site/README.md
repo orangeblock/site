@@ -17,6 +17,8 @@ All commands run from `site/`.
 
 The build downloads the fonts from Fontsource the first time, so it needs a network connection.
 
+Deploying to the server: [`../deploy/README.md`](../deploy/README.md).
+
 ## Layout
 
 ```

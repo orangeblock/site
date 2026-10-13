@@ -112,11 +112,11 @@ docs/    Design and planning docs
 
 ## Hosting and deployment
 
-- DigitalOcean droplet: 1 vCPU, 512MB RAM. Too small to build on, so builds happen locally.
-- Build in `site/` on the local machine, rsync the output to the droplet.
-- Caddy serves static files and handles HTTPS automatically. When the API exists, Caddy reverse-proxies `/api` to uvicorn run by systemd.
+- Server: 1 vCPU, 512MB RAM. Too small to build on, so builds happen locally.
+- Build in `site/` on the local machine, rsync the output to the server (`deploy/deploy.sh`, details in `deploy/README.md`).
+- Caddy serves static files over HTTP on the server's IP until a domain exists, then HTTPS automatically. When the API exists, Caddy reverse-proxies `/api` to uvicorn run by systemd.
 - No Docker.
-- 1GB swap file on the droplet.
+- 1GB swap file on the server.
 - Move to GitHub Actions for builds once the repo is on GitHub.
 - Cloudflare free plan in front once a domain exists.
 
