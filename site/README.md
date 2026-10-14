@@ -14,6 +14,7 @@ All commands run from `site/`.
 | `npm run build`                | Build the site into `dist/`                         |
 | `npm run preview`              | Serve `dist/` locally to check the production build |
 | `npx astro check`              | Type-check `.astro`, `.ts` and content frontmatter  |
+| `npm test`                     | Run the unit tests (vitest)                         |
 
 The build downloads the fonts from Fontsource the first time, so it needs a network connection.
 
@@ -26,7 +27,7 @@ src/
   content/blog/       Posts (.md or .mdx)
   content/projects/   Projects (.md or .mdx)
   components/         Figure, Wide, Embed, Scene, list components
-  scenes/             three.js scenes used by <Scene>
+  scenes/             three.js scenes used by <Scene> (cube.ts, bouncing-balls/)
   layouts/            Base (header/footer) and Article
   pages/              Routes, including rss.xml.ts
   styles/global.css   Colours, typography, layout
@@ -111,7 +112,9 @@ Normal code blocks follow the text width and scroll sideways.
 - Runs `src/scenes/cube.ts`. three.js is only downloaded when the scene scrolls into view, and rendering pauses when it scrolls out.
 - `poster={img}` shows an image until the scene loads.
 - Also accepts `caption`, `wide`, and `aspect`.
-- To add a scene, create `src/scenes/<name>.ts` exporting `mount(canvas)`, which returns `{ start(), stop() }`. See `cube.ts`.
+- To add a scene, create `src/scenes/<name>.ts` (or `src/scenes/<name>/index.ts`) exporting `mount(canvas, panel)`, which returns `{ start(), stop() }`. See `cube.ts`.
+- `start="click"` shows a Play button and loads the scene only when it is pressed, instead of when it scrolls into view. Scrolling out of view still calls `stop()`.
+- `panel` adds an empty layer over the canvas and passes it to `mount` as `panel`, for scenes that build their own controls on top of the scene (the layer ignores the pointer, so only the controls inside it catch it). See `scenes/bouncing-balls/`.
 
 [`src/content/blog/style-test/index.mdx`](src/content/blog/style-test/index.mdx) uses every element and is a working reference.
 

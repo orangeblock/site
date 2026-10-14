@@ -1,0 +1,220 @@
+/*
+ * Panel styles. The panel is built at runtime and laid over the scene, so these are plain global rules
+ * prefixed with bb-. The overlay itself ignores the pointer; only the controls inside it catch it.
+ */
+
+.bb-drawer,
+.bb-bar,
+.bb-tools {
+	pointer-events: auto;
+}
+.bb-aim {
+	position: absolute;
+	top: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	font-family: var(--mono);
+	font-size: 13px;
+	color: var(--accent);
+	pointer-events: none;
+}
+
+/* The tool strip: one icon button per tool, stacked down the left edge. */
+.bb-tools {
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	display: flex;
+	flex-direction: column;
+}
+.bb-tools button {
+	display: grid;
+	place-items: center;
+	width: 38px;
+	height: 38px;
+	padding: 0;
+	color: var(--muted);
+}
+.bb-tools button + button {
+	margin-top: -1px;
+}
+.bb-tools button:hover {
+	position: relative;
+	z-index: 1;
+	color: var(--text);
+}
+/* The engaged tool is amber. It is also filled while its drawer is open. */
+.bb-tools button.bb-on {
+	position: relative;
+	z-index: 1;
+	color: var(--accent);
+	border-color: var(--accent);
+}
+.bb-tools button.bb-open {
+	background: var(--surface);
+}
+.bb-drawer {
+	position: absolute;
+	top: 8px;
+	left: 54px;
+	max-height: calc(100% - 68px);
+	width: min(280px, calc(100% - 16px));
+	overflow-y: auto;
+	background: color-mix(in srgb, var(--bg) 88%, transparent);
+	border: 1px solid var(--border);
+}
+.bb-drawer[hidden] {
+	display: none;
+}
+.bb-section[hidden] {
+	display: none;
+}
+.bb-section h3 {
+	margin: 0;
+	padding: 8px 10px 4px;
+	font-family: var(--mono);
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--text);
+}
+.bb-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 4px 10px 10px;
+}
+.bb-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+.bb-fields:disabled {
+	opacity: 0.45;
+}
+.bb-fields:disabled .bb-fields:disabled {
+	/* The outer fieldset already dims everything inside it. */
+	opacity: 1;
+}
+.bb-row {
+	display: flex;
+	gap: 8px;
+}
+.bb-row > * {
+	flex: 1;
+	min-width: 0;
+}
+.bb-field {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--muted);
+}
+.bb-slider {
+	display: grid;
+	grid-template-columns: 1rem 1fr 2.6rem;
+	align-items: center;
+	gap: 6px;
+}
+.bb-slider output {
+	text-align: right;
+	color: var(--text);
+}
+.bb-check {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--muted);
+}
+.bb-check[hidden] {
+	display: none;
+}
+.bb-hint {
+	margin: 0;
+	font-family: var(--mono);
+	font-size: 11px;
+	line-height: 1.4;
+	color: var(--faint);
+}
+
+.bb-bar {
+	position: absolute;
+	left: 8px;
+	right: 8px;
+	bottom: 8px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 8px;
+	background: color-mix(in srgb, var(--bg) 88%, transparent);
+	border: 1px solid var(--border);
+}
+.bb-readout {
+	margin-left: auto;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--muted);
+}
+.bb-readout.bb-warn {
+	color: var(--accent);
+}
+
+.bb-drawer input,
+.bb-drawer select,
+.bb-drawer button,
+.bb-bar button,
+.bb-tools button {
+	font: inherit;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--text);
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	border-radius: 0;
+	padding: 4px 6px;
+	min-width: 0;
+}
+.bb-drawer button,
+.bb-bar button,
+.bb-tools button {
+	cursor: pointer;
+	transition: border-color 120ms;
+}
+.bb-drawer button:hover,
+.bb-bar button:hover,
+.bb-tools button:hover {
+	position: relative;
+	z-index: 1;
+	border-color: var(--accent);
+}
+.bb-drawer input[type='range'] {
+	padding: 0;
+	accent-color: var(--accent);
+}
+.bb-drawer input[type='checkbox'] {
+	accent-color: var(--accent);
+}
+
+/* On a narrow screen the drawer becomes a sheet above the toolbar. */
+@media (max-width: 640px) {
+	.bb-drawer {
+		left: 54px;
+		right: 8px;
+		width: auto;
+		top: auto;
+		max-height: 55%;
+		bottom: 96px;
+	}
+	.bb-readout {
+		margin-left: 0;
+		width: 100%;
+	}
+}

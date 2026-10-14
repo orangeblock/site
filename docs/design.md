@@ -87,7 +87,7 @@ Custom Shiki theme ("balanced"), applied at build time:
 - Frontmatter: title, date, tags. No drafts, series, or categories.
 - Images live in the repo and are optimised by Astro at build time (AVIF/WebP, multiple widths). Video, audio, and some images are embedded from external hosts.
 - **Embeds** (YouTube, Vimeo, etc.) show a static thumbnail and load the player only on click. No third-party requests before that.
-- **3D in posts:** an island component that shows a poster image and loads three.js only when it scrolls into view. Only pages that use it ship three.js.
+- **3D in posts:** an island component that shows a poster image and loads three.js only when it scrolls into view, or, for interactive scenes, only when a Play button is pressed. Only pages that use it ship three.js.
 
 ## Performance budget
 

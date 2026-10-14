@@ -4,5 +4,6 @@ export interface SceneControls {
 }
 
 export interface SceneModule {
-	mount(canvas: HTMLCanvasElement): SceneControls;
+	/** `panel` is an empty element below the canvas, present only when the page asks for one with the `panel` prop. */
+	mount(canvas: HTMLCanvasElement, panel: HTMLElement): SceneControls;
 }
