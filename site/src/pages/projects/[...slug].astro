@@ -1,7 +1,7 @@
 ---
 import { render } from 'astro:content';
 import Article from '../../layouts/Article.astro';
-import { formatMonth, getProjects } from '../../lib';
+import { formatDate, getProjects } from '../../lib';
 
 export async function getStaticPaths() {
 	const projects = await getProjects();
@@ -13,6 +13,6 @@ const { Content } = await render(project);
 ---
 
 <Article title={project.data.title}>
-	<time slot="meta" datetime={project.data.date.toISOString()}>{formatMonth(project.data.date)}</time>
+	<time slot="meta" datetime={project.data.date.toISOString()}>{formatDate(project.data.date)}</time>
 	<Content />
 </Article>

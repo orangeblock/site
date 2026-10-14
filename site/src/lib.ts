@@ -16,10 +16,6 @@ export function formatDate(date: Date) {
 	return date.toISOString().slice(0, 10);
 }
 
-export function formatMonth(date: Date) {
-	return date.toISOString().slice(0, 7);
-}
-
 export function tagSlug(tag: string) {
 	return tag
 		.toLowerCase()
