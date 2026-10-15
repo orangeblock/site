@@ -395,6 +395,25 @@ describe('spatial hash', () => {
 	});
 });
 
+describe('spatial hash capacity', () => {
+	it('keeps every pair when there are more than the initial 4096', () => {
+		let seed = 99;
+		const rng = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+		const store = new BallStore(3000);
+		// A dense clump: far more overlapping pairs than balls.
+		for (let i = 0; i < 3000; i++) store.add(ball({ x: rng() * 3, y: rng() * 3, z: rng() * 3, radius: 0.2 }));
+		const grid = new BallGrid();
+		grid.findPairs(store);
+
+		let expected = 0;
+		for (let i = 0; i < store.count; i++)
+			for (let j = i + 1; j < store.count; j++)
+				if (Math.hypot(store.px[i] - store.px[j], store.py[i] - store.py[j], store.pz[i] - store.pz[j]) <= 0.4) expected++;
+		expect(expected).toBeGreaterThan(4096);
+		expect(grid.pairCount).toBe(expected);
+	});
+});
+
 describe('advance', () => {
 	it('runs one tick per 1/tickRate of real time and carries the remainder', () => {
 		const sim = new Simulation([]);

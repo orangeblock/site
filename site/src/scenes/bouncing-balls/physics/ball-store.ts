@@ -34,7 +34,7 @@ export class BallStore {
 	readonly mass: Float64Array;
 	readonly restitution: Float64Array;
 
-	/** Position and velocity a ball returns to on reset. These are what the panel's sliders edit. */
+	/** Position and velocity a ball returns to on reset */
 	readonly ox: Float64Array;
 	readonly oy: Float64Array;
 	readonly oz: Float64Array;
