@@ -161,6 +161,17 @@ export class View {
 		return null;
 	}
 
+	/**
+	 * Where to place something for the pointer: `distance` metres from the camera along the pointer ray, or the
+	 * surface under the pointer if that is nearer. In open air the normal points up.
+	 */
+	pickPlacement(clientX: number, clientY: number, distance: number): SurfaceHit {
+		const { origin, direction } = this.rayFromPointer(clientX, clientY);
+		const surface = this.pickSurface(clientX, clientY);
+		if (surface && origin.distanceTo(new Vector3(...surface.point)) <= distance) return surface;
+		return { point: origin.addScaledVector(direction, distance).toArray(), normal: [0, 1, 0] };
+	}
+
 	dispose(): void {
 		this.renderer.dispose();
 	}

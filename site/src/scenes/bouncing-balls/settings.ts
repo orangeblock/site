@@ -14,6 +14,8 @@ export interface Settings {
 	pulseRate: number;
 	pattern: Pattern;
 	count: number;
+	/** Distance (m) from the camera at which balls and fields are placed, unless a surface is nearer. */
+	placeDistance: number;
 	/** Keep adding balls while the pointer is held down in Add mode. */
 	emit: boolean;
 	/** Balls per second while emitting. */
@@ -32,6 +34,7 @@ export const defaultSettings: Settings = {
 	pulseRate: 2,
 	pattern: 'single',
 	count: 100,
+	placeDistance: 15,
 	emit: false,
 	emitRate: 30,
 	batch: { ...DEFAULT_TEMPLATE },

@@ -176,6 +176,7 @@ export class Panel {
 				numberField('physics Hz', { min: 1, max: 500, step: 10, value: 300 }, (v) => actions.setTickRate(Math.max(1, Math.min(500, v)))).root,
 				select('render cap', [{ value: '0', label: 'display rate' }, { value: '60', label: '60 fps' }, { value: '30', label: '30 fps' }], '0', (v) => actions.setRenderCap(Number(v))).root,
 			),
+			withTitle(numberField('placement distance (m)', { min: 1, max: 200, step: 1, value: settings.placeDistance }, (v) => (settings.placeDistance = Math.max(v, 1))), 'How far in front of the camera balls and fields are placed. A surface closer than this takes over.'),
 			numberField('friction (μ)', { min: 0, max: 2, step: 0.05, value: 0 }, (v) => actions.setFriction(Math.max(0, v))).root,
 			checkbox('colour by speed', true, actions.setColourBySpeed).root,
 			el('p', { class: 'bb-hint' }, 'Keys while the scene is focused: Space start/stop, → step, R reset all, G randomize, Backspace delete selected, Z reset camera, Esc cancel.'),

@@ -102,8 +102,7 @@ export class PointerTools {
 		if (this.aim) this.refreshAim();
 		if (!this.emitting) return;
 
-		const surface = this.ctx.view.pickSurface(this.pointerX, this.pointerY);
-		if (!surface) return;
+		const surface = this.ctx.view.pickPlacement(this.pointerX, this.pointerY, this.ctx.settings.placeDistance);
 		this.emitCredit += dt * this.ctx.settings.emitRate;
 		while (this.emitCredit >= 1) {
 			this.ctx.emitBall(surface);
@@ -174,8 +173,7 @@ export class PointerTools {
 		}
 		if (!wasClick || emitting) return;
 
-		const surface = ctx.view.pickSurface(e.clientX, e.clientY);
-		if (!surface) return;
+		const surface = ctx.view.pickPlacement(e.clientX, e.clientY, ctx.settings.placeDistance);
 		if (this._tool === 'add') {
 			ctx.placeBalls(surface);
 		} else if (this._tool === 'field') {
