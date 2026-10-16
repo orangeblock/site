@@ -25,7 +25,6 @@ const TOOLS: { tool: PanelTool; label: string }[] = [
 export interface PanelActions {
 	toggleRunning(): void;
 	step(): void;
-	resetSelected(): void;
 	resetAll(): void;
 	clearAll(): void;
 	randomize(): void;
@@ -199,10 +198,9 @@ export class Panel {
 			{ class: 'bb-bar' },
 			this.runButton,
 			button('Step', actions.step),
-			button('Reset selected', actions.resetSelected),
-			button('Reset all', actions.resetAll),
-			button('Clear all', actions.clearAll),
-			button('Randomize 5000', actions.randomize),
+			button('Reset', actions.resetAll),
+			button('Clear', actions.clearAll),
+			button('Randomize', actions.randomize),
 			this.readout,
 			this.fullscreenButton(root),
 		);

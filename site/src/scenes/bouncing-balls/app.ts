@@ -14,7 +14,8 @@ import { defaultSettings, type Settings } from './settings';
 import { Panel } from './ui/panel';
 import { worlds, type World } from './worlds';
 
-const RANDOM_BALLS = 5000;
+/** How many balls Randomize asks for. A world's fill region can hold fewer, and then gets fewer. */
+const RANDOM_BALLS = { cpu: 5_000, gpu: 25_000 };
 
 /** Which engine runs the physics: `Simulation` on the CPU, or `GpuSimulation` in WebGPU compute shaders. */
 export type EngineKind = 'cpu' | 'gpu';
@@ -60,9 +61,9 @@ export class App {
 		if (kind === 'gpu') {
 			if (!('isWebGPUBackend' in view.renderer.backend)) throw new Error('WebGPU failed to start, so the GPU engine cannot run.');
 			const sim = new GpuSimulation(view.renderer, colliders);
-			return new App(canvas, panelRoot, view, sim, new GpuBalls(sim));
+			return new App(canvas, panelRoot, view, sim, new GpuBalls(sim), RANDOM_BALLS.gpu);
 		}
-		return new App(canvas, panelRoot, view, new Simulation(colliders), new CpuBalls(MAX_BALLS));
+		return new App(canvas, panelRoot, view, new Simulation(colliders), new CpuBalls(MAX_BALLS), RANDOM_BALLS.cpu);
 	}
 
 	private constructor(
@@ -71,6 +72,7 @@ export class App {
 		private readonly view: View,
 		private readonly sim: Engine,
 		private readonly balls: BallMesh,
+		private readonly randomBalls: number,
 	) {
 		canvas.tabIndex = 0;
 		this.view.setBalls(balls);
@@ -199,7 +201,7 @@ export class App {
 
 	private randomize(): void {
 		this.sim.clearBalls();
-		for (const spec of randomFill(RANDOM_BALLS, this.world.fill)) this.sim.addBall(spec);
+		for (const spec of randomFill(this.randomBalls, this.world.fill)) this.sim.addBall(spec);
 		this.panel.showBall(this.sim.store);
 	}
 
@@ -214,7 +216,6 @@ export class App {
 		return {
 			toggleRunning: () => this.setRunning(!this.sim.running),
 			step: () => this.sim.tick(),
-			resetSelected: () => this.sim.store.selected >= 0 && this.sim.resetBall(this.sim.store.selected),
 			resetAll: () => this.sim.resetAll(),
 			clearAll: () => {
 				this.sim.clearBalls();
