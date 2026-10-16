@@ -195,6 +195,13 @@
 	z-index: 1;
 	border-color: var(--accent);
 }
+.bb-drawer input[aria-invalid='true'] {
+	border-color: #e5484d;
+}
+.bb-warning {
+	color: #e5484d;
+	font-size: 0.75em;
+}
 .bb-drawer input[type='range'] {
 	padding: 0;
 	accent-color: var(--accent);

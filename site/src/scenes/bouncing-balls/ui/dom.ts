@@ -11,18 +11,28 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 	return node;
 }
 
-/** A labelled number input. `onChange` receives only valid numbers. */
+/**
+ * A labelled number input. `onChange` receives only valid numbers within `min` and `max`.
+ * A value outside that range is flagged on the field and not passed on.
+ */
 export function numberField(
 	label: string,
 	options: { min?: number; max?: number; step?: number; value: number },
 	onChange: (value: number) => void,
 ): { root: HTMLLabelElement; input: HTMLInputElement } {
 	const input = el('input', { type: 'number', ...stringify(options) });
+	const { min = -Infinity, max = Infinity } = options;
+	const range = [options.min !== undefined && `min ${options.min}`, options.max !== undefined && `max ${options.max}`].filter(Boolean).join(', ');
+	const warning = el('small', { class: 'bb-warning', hidden: true, textContent: range });
 	input.addEventListener('input', () => {
 		const value = input.valueAsNumber;
-		if (Number.isFinite(value)) onChange(value);
+		if (!Number.isFinite(value)) return;
+		const valid = value >= min && value <= max;
+		input.setAttribute('aria-invalid', String(!valid));
+		warning.hidden = valid;
+		if (valid) onChange(value);
 	});
-	return { root: el('label', { class: 'bb-field' }, el('span', {}, label), input), input };
+	return { root: el('label', { class: 'bb-field' }, el('span', {}, label), input, warning), input };
 }
 
 /** A labelled slider that shows its current value. */
