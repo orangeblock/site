@@ -233,12 +233,12 @@ class CylinderCollider extends OrientedCollider {
 	}
 }
 
-class HeightfieldCollider implements Collider {
+export class HeightfieldCollider implements Collider {
 	readonly bounds: Bounds;
-	private readonly dx: number;
-	private readonly dz: number;
+	readonly dx: number;
+	readonly dz: number;
 	/** How far above the surface a ball can be and still touch it, as a multiple of its radius (steeper slopes reach further). */
-	private readonly reachFactor: number;
+	readonly reachFactor: number;
 
 	constructor(
 		private readonly origin: [number, number],

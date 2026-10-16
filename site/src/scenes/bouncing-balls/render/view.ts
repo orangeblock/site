@@ -1,44 +1,16 @@
-import {
-	Color,
-	DirectionalLight,
-	Fog,
-	Group,
-	HemisphereLight,
-	InstancedBufferAttribute,
-	InstancedMesh,
-	MeshStandardMaterial,
-	PerspectiveCamera,
-	Raycaster,
-	Scene,
-	SphereGeometry,
-	Vector2,
-	Vector3,
-	WebGLRenderer,
-} from 'three';
+import { Color, DirectionalLight, Fog, Group, HemisphereLight, type Object3D, PerspectiveCamera, Raycaster, Scene, Vector2, Vector3 } from 'three';
+import { WebGPURenderer } from 'three/webgpu';
 import type { BallStore } from '../physics/ball-store';
-import { MAX_BALLS } from '../physics/constants';
 import type { World } from '../worlds';
 import { buildColliderMeshes } from './collider-meshes';
-import { FAST_SPEED, palette } from './palette';
+import { palette } from './palette';
 
-const baseColour = new Color(palette.ball);
-const selectedColour = new Color(palette.selected);
-
-function writeColour(out: Float32Array, offset: number, colour: Color): void {
-	out[offset] = colour.r;
-	out[offset + 1] = colour.g;
-	out[offset + 2] = colour.b;
-}
-
-/** Blends slow → medium → fast by speed, so fast balls stand out and the spread of a force is visible. */
-function writeSpeedColour(out: Float32Array, offset: number, speed: number): void {
-	const t = Math.min(speed / FAST_SPEED, 1);
-	const from = t < 0.5 ? palette.slow : palette.medium;
-	const to = t < 0.5 ? palette.medium : palette.fast;
-	const u = t < 0.5 ? t * 2 : t * 2 - 1;
-	out[offset] = from.r + (to.r - from.r) * u;
-	out[offset + 1] = from.g + (to.g - from.g) * u;
-	out[offset + 2] = from.b + (to.b - from.b) * u;
+/** Draws every ball. Each engine has its own (`CpuBalls`, `GpuBalls`). */
+export interface BallMesh {
+	readonly object: Object3D;
+	colourBySpeed: boolean;
+	/** Called before every render. */
+	sync(store: BallStore): void;
 }
 
 export interface SurfaceHit {
@@ -47,24 +19,23 @@ export interface SurfaceHit {
 }
 
 /**
- * Everything three.js: the renderer, the scene graph, and one InstancedMesh that draws every ball.
+ * Everything three.js: the renderer, the scene graph and the camera. The balls are drawn by a `BallMesh`.
  *
- * An InstancedMesh draws the same geometry many times in a single draw call. Each copy gets its own
- * transform and colour from two big buffers, which is what makes thousands of balls cheap to render.
+ * `WebGPURenderer` uses WebGPU where the browser has it and falls back to WebGL 2 otherwise. The GPU engine
+ * needs the WebGPU backend; the CPU engine runs on either.
  */
 export class View {
-	readonly renderer: WebGLRenderer;
+	readonly renderer: WebGPURenderer;
 	readonly scene = new Scene();
 	readonly camera = new PerspectiveCamera(45, 1, 0.1, 400);
-	colourBySpeed = true;
+	private balls: BallMesh | null = null;
 
-	private readonly balls: InstancedMesh;
 	private world = new Group();
 	private walls = new Group();
 	private readonly raycaster = new Raycaster();
 
 	constructor(readonly canvas: HTMLCanvasElement) {
-		this.renderer = new WebGLRenderer({ canvas, antialias: true });
+		this.renderer = new WebGPURenderer({ canvas, antialias: true });
 		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 		this.scene.background = new Color(palette.background);
@@ -73,14 +44,6 @@ export class View {
 		const sun = new DirectionalLight(0xffffff, 2.2);
 		sun.position.set(20, 40, 15);
 		this.scene.add(sun);
-
-		// One unit-radius sphere; each ball scales it to its own radius through its instance matrix.
-		this.balls = new InstancedMesh(new SphereGeometry(1, 12, 8), new MeshStandardMaterial({ roughness: 0.5 }), MAX_BALLS);
-		this.balls.instanceColor = new InstancedBufferAttribute(new Float32Array(MAX_BALLS * 3), 3);
-		// The mesh's bounding sphere is computed once and would not follow the balls, so never cull it.
-		this.balls.frustumCulled = false;
-		this.balls.count = 0;
-		this.scene.add(this.balls);
 
 		new ResizeObserver(() => this.resize()).observe(canvas);
 	}
@@ -106,38 +69,15 @@ export class View {
 		this.walls.visible = visible;
 	}
 
-	/** Copies the simulation's positions, radii and colours into the instance buffers. */
-	sync(store: BallStore): void {
-		const n = store.count;
-		const matrices = this.balls.instanceMatrix.array as Float32Array;
-		const colours = this.balls.instanceColor!.array as Float32Array;
-		const { px, py, pz, vx, vy, vz, radius } = store;
-
-		for (let i = 0; i < n; i++) {
-			// A 4×4 column-major matrix: scale on the diagonal, translation in the last column. The
-			// off-diagonal entries stay zero, so only these seven numbers need writing.
-			const m = i * 16;
-			matrices[m] = matrices[m + 5] = matrices[m + 10] = radius[i];
-			matrices[m + 12] = px[i];
-			matrices[m + 13] = py[i];
-			matrices[m + 14] = pz[i];
-			matrices[m + 15] = 1;
-
-			if (i === store.selected) writeColour(colours, i * 3, selectedColour);
-			else if (this.colourBySpeed) writeSpeedColour(colours, i * 3, Math.hypot(vx[i], vy[i], vz[i]));
-			else writeColour(colours, i * 3, baseColour);
-		}
-
-		this.balls.count = n;
-		// Only upload the part of each buffer that is in use.
-		for (const [attribute, size] of [[this.balls.instanceMatrix, 16], [this.balls.instanceColor!, 3]] as const) {
-			attribute.clearUpdateRanges();
-			attribute.addUpdateRange(0, n * size);
-			attribute.needsUpdate = true;
-		}
+	setBalls(balls: BallMesh): void {
+		if (this.balls) this.scene.remove(this.balls.object);
+		this.balls = balls;
+		this.scene.add(balls.object);
 	}
 
-	render(): void {
+	/** Draws a frame. The balls are taken from `store` (the GPU engine's mesh ignores it). */
+	render(store: BallStore): void {
+		this.balls?.sync(store);
 		this.renderer.render(this.scene, this.camera);
 	}
 

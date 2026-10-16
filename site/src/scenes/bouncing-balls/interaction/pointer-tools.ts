@@ -1,10 +1,10 @@
 import { Vector3 } from 'three';
-import type { Simulation } from '../physics/simulation';
+import type { Engine } from '../physics/engine';
 import type { AimGuide } from '../render/aim-guide';
 import type { CameraRig } from '../render/camera-rig';
 import type { SurfaceHit, View } from '../render/view';
 import type { Settings } from '../settings';
-import { pickBall, pickField, rayPlane } from './picking';
+import { pickField, rayPlane } from './picking';
 
 export type Tool = 'select' | 'add' | 'field';
 
@@ -18,7 +18,7 @@ const CLICK_PIXELS = 5;
 export interface ToolContext {
 	canvas: HTMLCanvasElement;
 	view: View;
-	sim: Simulation;
+	sim: Engine;
 	rig: CameraRig;
 	guide: AimGuide;
 	settings: Settings;
@@ -129,24 +129,35 @@ export class PointerTools {
 		this.pressed = true;
 
 		if (this._tool === 'select') {
-			const ray = ctx.view.rayFromPointer(e.clientX, e.clientY);
-			const origin = ray.origin.toArray();
-			const direction = ray.direction.toArray();
-			const ball = pickBall(ctx.sim.store, origin, direction);
-			const field = pickField(ctx.sim.forces.fields, origin, direction);
-			if (field && (!ball || field.t < ball.t)) {
-				ctx.selectField(field.index);
-				return;
-			}
-			if (!ball) return;
-			ctx.select(ball.index);
-			this.aim = { ball: ball.index, fraction: 0, direction: [0, 1, 0] };
-			ctx.rig.setSuspended(true);
-			ctx.canvas.setPointerCapture(e.pointerId);
+			this.pickAndAim(e);
 		} else if (this._tool === 'add' && ctx.settings.emit) {
 			this.emitting = true;
 			this.emitCredit = 1;
 		}
+	}
+
+	/**
+	 * Selects the ball or field under the pointer and starts aiming a ball. The GPU engine has to read the
+	 * positions back first, so the pick may arrive a frame or two after the press.
+	 */
+	private async pickAndAim(e: PointerEvent): Promise<void> {
+		const { ctx } = this;
+		const ray = ctx.view.rayFromPointer(e.clientX, e.clientY);
+		const origin = ray.origin.toArray();
+		const direction = ray.direction.toArray();
+		const field = pickField(ctx.sim.forces.fields, origin, direction);
+		const ball = await ctx.sim.pickBall(origin, direction);
+		if (field && (!ball || field.t < ball.t)) {
+			ctx.selectField(field.index);
+			return;
+		}
+		if (!ball) return;
+		ctx.select(ball.index);
+		// A click released before the pick arrived only selects.
+		if (!this.pressed || this.aim) return;
+		this.aim = { ball: ball.index, fraction: 0, direction: [0, 1, 0] };
+		ctx.rig.setSuspended(true);
+		ctx.canvas.setPointerCapture(e.pointerId);
 	}
 
 	private onMove(e: PointerEvent): void {

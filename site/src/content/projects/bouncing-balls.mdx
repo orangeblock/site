@@ -7,7 +7,7 @@ slug: bouncing-balls
 
 import Scene from '../../components/Scene.astro';
 
-A ball physics sandbox, ported from a C++ and OpenGL desktop app. Press Play to load it. It holds up to 20,000 balls.
+A ball physics sandbox, ported from a C++ and OpenGL desktop app. Press Play to load it, then choose where the physics runs: on the CPU, up to 20,000 balls, or on the GPU with WebGPU, up to 262,144 balls.
 
 <Scene name="bouncing-balls" alt="Interactive bouncing balls simulation" wide aspect="4 / 3" start="click" panel />
 
@@ -16,7 +16,7 @@ A ball physics sandbox, ported from a C++ and OpenGL desktop app. Press Play to 
 The strip of icons on the left of the scene has four tools. Clicking one opens its controls beside the strip. Clicking the active tool again folds them away and keeps the tool engaged. Esc leaves add and field mode.
 
 - **Select** (pointer): click a ball to select it and edit it. Press a ball, drag away from it and release to launch it the other way, like a pool cue. Shift pulls up or down. The pull length sets the force.
-- **Objects** (cube): while this tool is active, clicking the scene drops single balls, blocks or clouds. With hold to emit on, it keeps adding while the button is held. Past 20,000 balls the oldest are recycled. Set the batch's mass, bounce, radius and starting velocity, or tick random properties to give every ball its own (radius is capped so batches stay sane).
+- **Objects** (cube): while this tool is active, clicking the scene drops single balls, blocks or clouds. With hold to emit on, it keeps adding while the button is held. Once the engine's limit is reached, the oldest balls are recycled. Set the batch's mass, bounce, radius and starting velocity, or tick random properties to give every ball its own (radius is capped so batches stay sane).
 - **Forces** (waves): while this tool is active, clicking the scene drops a force field. It radiates force from that point, as a push or, with negative power, a pull. It can pulse several times a second or push steadily, and lasts as long as you set. In Select mode, click its dot to select it and press Backspace to remove it.
 - **World** (cog): world, camera, physics rate, friction and display settings. Randomize fills the world with 5,000 balls.
 - Camera: fly (WASD to move, drag to look) or orbit. Touch screens start in orbit.
@@ -26,8 +26,9 @@ The strip of icons on the left of the scene has four tools. Clicking one opens i
 The source is the point. It is organised to be read in order, and each folder does one job:
 
 1. `physics/` is plain TypeScript with no three.js: ball state in typed arrays, a fixed-timestep loop, a spatial hash for collisions, forces integrated exactly.
-2. `worlds/` describes each world as data.
-3. `render/` is the three.js part: one `InstancedMesh` draws every ball in a single draw call, the camera rig switches between `OrbitControls` and a fly camera.
-4. `interaction/` and `ui/` turn the pointer and the panel into actions, and `app.ts` ties them together.
+2. `gpu/` runs the same physics as WebGPU compute shaders, written in three.js TSL.
+3. `worlds/` describes each world as data.
+4. `render/` is the three.js part: one draw call draws every ball, the camera rig switches between `OrbitControls` and a fly camera.
+5. `interaction/` and `ui/` turn the pointer and the panel into actions, and `app.ts` ties them together.
 
 The folder's `README.md` lists the files in reading order. The physics has its own tests.

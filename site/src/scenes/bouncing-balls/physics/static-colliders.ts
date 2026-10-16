@@ -2,7 +2,8 @@ import type { BallStore } from './ball-store';
 import { MAX_RADIUS, REST_SPEED } from './constants';
 import { createCollider, type Collider, type ColliderSpec, type Contact } from './colliders';
 
-const CELL = 2;
+/** Edge length (m) of the coarse grid's cells. */
+export const STATIC_CELL = 2;
 
 /**
  * Tests every ball against the world's static colliders.
@@ -11,50 +12,58 @@ const CELL = 2;
  * pegboard with a hundred pegs. Instead the space is cut into a coarse grid and every cell lists the colliders
  * that could reach a ball centred inside it. A ball then only tests the few colliders in its own cell, plus the
  * infinite ones (planes) that appear in every cell.
+ *
+ * The lists hold indices into `colliders`, which is in the order of the specs, so the GPU engine can upload the
+ * same grid.
  */
 export class StaticColliders {
-	private readonly infinite: Collider[] = [];
-	private readonly cells: Collider[][] = [];
-	private readonly min: [number, number, number] = [0, 0, 0];
-	private readonly dims: [number, number, number] = [0, 0, 0];
+	readonly colliders: Collider[] = [];
+	/** Colliders without bounds, tested by every ball. */
+	readonly infinite: number[] = [];
+	/** Cell (x, y, z) is `cells[x + dims[0] * (y + dims[1] * z)]`. Empty when there are no finite colliders. */
+	readonly cells: number[][] = [];
+	readonly min: [number, number, number] = [0, 0, 0];
+	readonly dims: [number, number, number] = [0, 0, 0];
 	private readonly contact: Contact = { nx: 0, ny: 0, nz: 0, depth: 0 };
 
 	constructor(specs: ColliderSpec[]) {
-		const finite: Collider[] = [];
+		const finite: number[] = [];
 		for (const spec of specs) {
 			const collider = createCollider(spec);
-			(collider.bounds ? finite : this.infinite).push(collider);
+			(collider.bounds ? finite : this.infinite).push(this.colliders.length);
+			this.colliders.push(collider);
 		}
 		if (finite.length === 0) return;
 
 		// Bounds of the whole world, padded so a ball centre up to MAX_RADIUS away from a collider is still inside the grid.
 		const lo = [Infinity, Infinity, Infinity];
 		const hi = [-Infinity, -Infinity, -Infinity];
-		for (const c of finite) {
+		for (const k of finite) {
+			const b = this.colliders[k].bounds!;
 			for (let a = 0; a < 3; a++) {
-				lo[a] = Math.min(lo[a], c.bounds![a] - MAX_RADIUS);
-				hi[a] = Math.max(hi[a], c.bounds![a + 3] + MAX_RADIUS);
+				lo[a] = Math.min(lo[a], b[a] - MAX_RADIUS);
+				hi[a] = Math.max(hi[a], b[a + 3] + MAX_RADIUS);
 			}
 		}
 		for (let a = 0; a < 3; a++) {
 			this.min[a] = lo[a];
-			this.dims[a] = Math.max(1, Math.ceil((hi[a] - lo[a]) / CELL));
+			this.dims[a] = Math.max(1, Math.ceil((hi[a] - lo[a]) / STATIC_CELL));
 		}
 
 		const [nx, ny, nz] = this.dims;
 		for (let i = 0; i < nx * ny * nz; i++) this.cells.push([]);
-		for (const c of finite) {
-			const b = c.bounds!;
+		for (const k of finite) {
+			const b = this.colliders[k].bounds!;
 			const [x0, y0, z0] = this.cellCoords(b[0] - MAX_RADIUS, b[1] - MAX_RADIUS, b[2] - MAX_RADIUS);
 			const [x1, y1, z1] = this.cellCoords(b[3] + MAX_RADIUS, b[4] + MAX_RADIUS, b[5] + MAX_RADIUS);
 			for (let z = z0; z <= z1; z++)
 				for (let y = y0; y <= y1; y++)
-					for (let x = x0; x <= x1; x++) this.cells[x + nx * (y + ny * z)].push(c);
+					for (let x = x0; x <= x1; x++) this.cells[x + nx * (y + ny * z)].push(k);
 		}
 	}
 
 	private cellCoords(x: number, y: number, z: number): [number, number, number] {
-		const clamp = (v: number, a: number) => Math.max(0, Math.min(this.dims[a] - 1, Math.floor((v - this.min[a]) / CELL)));
+		const clamp = (v: number, a: number) => Math.max(0, Math.min(this.dims[a] - 1, Math.floor((v - this.min[a]) / STATIC_CELL)));
 		return [clamp(x, 0), clamp(y, 1), clamp(z, 2)];
 	}
 
@@ -68,21 +77,21 @@ export class StaticColliders {
 			if (this.cells.length === 0) continue;
 
 			const inside =
-				px[i] >= this.min[0] && px[i] < this.min[0] + nx * CELL &&
-				py[i] >= this.min[1] && py[i] < this.min[1] + ny * CELL &&
-				pz[i] >= this.min[2] && pz[i] < this.min[2] + nz * CELL;
+				px[i] >= this.min[0] && px[i] < this.min[0] + nx * STATIC_CELL &&
+				py[i] >= this.min[1] && py[i] < this.min[1] + ny * STATIC_CELL &&
+				pz[i] >= this.min[2] && pz[i] < this.min[2] + nz * STATIC_CELL;
 			if (!inside) continue;
 			const [cx, cy, cz] = this.cellCoords(px[i], py[i], pz[i]);
 			this.resolveAgainst(this.cells[cx + nx * (cy + ny * cz)], store, i, friction);
 		}
 	}
 
-	private resolveAgainst(colliders: Collider[], store: BallStore, i: number, friction: number): void {
+	private resolveAgainst(indices: number[], store: BallStore, i: number, friction: number): void {
 		const { px, py, pz, vx, vy, vz, radius, restitution } = store;
 		const contact = this.contact;
 
-		for (const collider of colliders) {
-			if (!collider.test(px[i], py[i], pz[i], radius[i], contact)) continue;
+		for (const k of indices) {
+			if (!this.colliders[k].test(px[i], py[i], pz[i], radius[i], contact)) continue;
 
 			// Move the ball back out along the surface normal.
 			px[i] += contact.nx * contact.depth;

@@ -2,20 +2,22 @@ import { BallStore, type BallSpec } from './ball-store';
 import { BallGrid } from './ball-grid';
 import { resolveBallPair } from './ball-collision';
 import type { ColliderSpec } from './colliders';
-import { GRAVITY } from './constants';
+import { DEFAULT_TICK_RATE, GRAVITY } from './constants';
+import type { BallProp, Engine } from './engine';
 import { ForceSet } from './forces';
 import { StaticColliders } from './static-colliders';
+import { pickBall } from '../interaction/picking';
 
 /**
  * The whole physics world: balls, forces and static geometry, advanced in fixed timesteps.
  * Nothing in `physics/` imports three.js, so it can be run and tested on its own.
  */
-export class Simulation {
+export class Simulation implements Engine {
 	readonly store = new BallStore();
 	readonly forces = new ForceSet();
 	gravity = GRAVITY;
 	/** Physics ticks per simulated second. The timestep is always 1 / tickRate, whatever the frame rate. */
-	tickRate = 300;
+	tickRate = DEFAULT_TICK_RATE;
 	/** Coulomb friction coefficient μ for ball-ball and ball-surface contacts. 0 means frictionless. */
 	friction = 0;
 	running = false;
@@ -62,6 +64,25 @@ export class Simulation {
 		for (let i = 0; i < this.store.count; i++) this.store.reset(i);
 		this.forces.clearDirected();
 	}
+
+	editBall(i: number, prop: BallProp, value: number): void {
+		const s = this.store;
+		const origin = { x: s.ox, y: s.oy, z: s.oz, vx: s.ovx, vy: s.ovy, vz: s.ovz };
+		const live = { x: s.px, y: s.py, z: s.pz, vx: s.vx, vy: s.vy, vz: s.vz };
+		if (prop in origin) {
+			origin[prop as keyof typeof origin][i] = value;
+			if (!this.running) live[prop as keyof typeof live][i] = value;
+		} else {
+			s[prop as 'mass' | 'restitution' | 'radius'][i] = value;
+		}
+	}
+
+	async pickBall(origin: readonly [number, number, number], direction: readonly [number, number, number]) {
+		return pickBall(this.store, origin, direction);
+	}
+
+	/** The store is the live state, so there is nothing to fetch. */
+	refreshSelected(): void {}
 
 	/**
 	 * Advances the world by exactly `dt` seconds.

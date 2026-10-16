@@ -95,7 +95,8 @@ export function spawnPattern(
 ): BallSpec[] {
 	const spacingRadius = randomise ? RANDOM_RANGES.radius[1] : template.radius;
 	const offsets = patternOffsets(pattern, count, spacingRadius, rng);
-	const extent = Math.max(...offsets.map((o) => Math.hypot(...o)));
+	let extent = 0;
+	for (const o of offsets) extent = Math.max(extent, Math.hypot(...o));
 	const lift = extent + 1.5 * spacingRadius;
 	return offsets.map(([x, y, z]) => ({
 		x: point[0] + normal[0] * lift + x,

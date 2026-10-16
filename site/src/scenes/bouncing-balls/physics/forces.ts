@@ -12,6 +12,20 @@ interface DirectedForce {
 	age: number;
 }
 
+/** Velocity change of one ball over one tick from a directed force. */
+export interface DirectedImpulse {
+	ball: number;
+	dvx: number;
+	dvy: number;
+	dvz: number;
+}
+
+export interface FieldImpulse {
+	field: RadialField;
+	/** Impulse (N·s) at the field's centre over one tick. */
+	impulse: number;
+}
+
 /**
  * A radial force field around a point, drawn in the scene as a sphere. Balls within `radius` feel `power`
  * scaled linearly from 1 at the centre to 0 at the edge, pushing outward for positive power and pulling
@@ -125,41 +139,55 @@ export class ForceSet {
 	}
 
 	/**
-	 * Adds the velocity change every force causes over the next `dt` seconds to dvx/dvy/dvz,
-	 * then ages the forces and discards the ones that have faded away.
+	 * What every force delivers over the next `dt` seconds: a velocity change per directed force, and an impulse
+	 * per field (the impulse at its centre; the falloff with distance is up to the caller). Then ages the forces
+	 * and discards the ones that have faded away.
 	 */
-	accumulate(store: BallStore, dt: number, dvx: Float64Array, dvy: Float64Array, dvz: Float64Array): void {
+	impulses(store: BallStore, dt: number): { directed: DirectedImpulse[]; fields: FieldImpulse[] } {
+		const directed: DirectedImpulse[] = [];
 		for (const f of this.directed) {
 			if (f.ball < store.count) {
 				const dv = (f.power * impulseFraction(f.age, dt, f.tau)) / store.mass[f.ball];
-				dvx[f.ball] += dv * f.dx;
-				dvy[f.ball] += dv * f.dy;
-				dvz[f.ball] += dv * f.dz;
+				directed.push({ ball: f.ball, dvx: dv * f.dx, dvy: dv * f.dy, dvz: dv * f.dz });
 			}
 			f.age += dt;
 		}
 
+		const fields: FieldImpulse[] = [];
 		for (const f of this._fields) {
 			const impulse = fieldImpulse(f, dt);
-			if (impulse !== 0) {
-				const rSq = f.radius * f.radius;
-				for (let i = 0; i < store.count; i++) {
-					const dx = store.px[i] - f.cx;
-					const dy = store.py[i] - f.cy;
-					const dz = store.pz[i] - f.cz;
-					const dSq = dx * dx + dy * dy + dz * dz;
-					if (dSq >= rSq || dSq < 1e-12) continue;
-					const d = Math.sqrt(dSq);
-					const dv = (impulse * (1 - d / f.radius)) / store.mass[i] / d;
-					dvx[i] += dv * dx;
-					dvy[i] += dv * dy;
-					dvz[i] += dv * dz;
-				}
-			}
+			if (impulse !== 0) fields.push({ field: f, impulse });
 			f.age += dt;
 		}
 
 		this.directed = this.directed.filter((f) => f.age < FORCE_LIFETIME * f.tau);
 		this._fields = this._fields.filter((f) => f.lifetime === 0 || f.age < f.lifetime + (f.pulseRate > 0 ? FORCE_LIFETIME * f.tau : 0));
+		return { directed, fields };
+	}
+
+	/** Adds the velocity change every force causes over the next `dt` seconds to dvx/dvy/dvz, and ages the forces. */
+	accumulate(store: BallStore, dt: number, dvx: Float64Array, dvy: Float64Array, dvz: Float64Array): void {
+		const { directed, fields } = this.impulses(store, dt);
+		for (const d of directed) {
+			dvx[d.ball] += d.dvx;
+			dvy[d.ball] += d.dvy;
+			dvz[d.ball] += d.dvz;
+		}
+
+		for (const { field: f, impulse } of fields) {
+			const rSq = f.radius * f.radius;
+			for (let i = 0; i < store.count; i++) {
+				const dx = store.px[i] - f.cx;
+				const dy = store.py[i] - f.cy;
+				const dz = store.pz[i] - f.cz;
+				const dSq = dx * dx + dy * dy + dz * dz;
+				if (dSq >= rSq || dSq < 1e-12) continue;
+				const d = Math.sqrt(dSq);
+				const dv = (impulse * (1 - d / f.radius)) / store.mass[i] / d;
+				dvx[i] += dv * dx;
+				dvy[i] += dv * dy;
+				dvz[i] += dv * dz;
+			}
+		}
 	}
 }

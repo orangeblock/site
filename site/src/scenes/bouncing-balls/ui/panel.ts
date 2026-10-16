@@ -1,6 +1,7 @@
 import type { BallStore } from '../physics/ball-store';
+import { DEFAULT_TICK_RATE } from '../physics/constants';
+import type { BallProp } from '../physics/engine';
 import { RANDOM_RANGES } from '../physics/spawn';
-import { MAX_BALLS } from '../physics/constants';
 import type { CameraMode } from '../render/camera-rig';
 import type { Tool } from '../interaction/pointer-tools';
 import type { Settings } from '../settings';
@@ -20,9 +21,6 @@ const TOOLS: { tool: PanelTool; label: string }[] = [
 	{ tool: 'forces', label: 'Forces: place force fields where you click' },
 	{ tool: 'world', label: 'World and settings' },
 ];
-
-/** The selected-ball properties the panel can edit. */
-export type BallProp = 'x' | 'y' | 'z' | 'vx' | 'vy' | 'vz' | 'mass' | 'restitution' | 'radius';
 
 export interface PanelActions {
 	toggleRunning(): void;
@@ -70,14 +68,16 @@ export class Panel {
 	private readonly aimReadout = el('output', { class: 'bb-aim' });
 	private readonly readout = el('div', { class: 'bb-readout' });
 	private readonly drawer = el('div', { class: 'bb-drawer' });
+	private readonly capacity: number;
 
 	constructor(
 		root: HTMLElement,
 		worlds: World[],
 		settings: Settings,
 		actions: PanelActions,
-		options: { cameraMode: CameraMode; touch: boolean },
+		options: { cameraMode: CameraMode; touch: boolean; capacity: number },
 	) {
+		this.capacity = options.capacity;
 		this.onSetTool = actions.setTool;
 		// On a narrow screen the drawer would cover the scene, so it starts folded away there.
 		this.open = !window.matchMedia('(max-width: 640px)').matches;
@@ -150,7 +150,7 @@ export class Panel {
 				'div',
 				{ class: 'bb-row' },
 				select('pattern', [{ value: 'single', label: 'single' }, { value: 'grid', label: 'grid' }, { value: 'cloud', label: 'cloud' }], settings.pattern, (v) => (settings.pattern = v)).root,
-				numberField('count', { min: 1, max: MAX_BALLS, step: 10, value: settings.count }, (v) => (settings.count = Math.max(1, Math.floor(v)))).root,
+				numberField('count', { min: 1, max: options.capacity, step: 10, value: settings.count }, (v) => (settings.count = Math.max(1, Math.floor(v)))).root,
 			),
 			el('div', { class: 'bb-row' }, checkbox('hold to emit', settings.emit, (v) => (settings.emit = v)).root, numberField('per second', { min: 1, max: 500, step: 5, value: settings.emitRate }, (v) => (settings.emitRate = v)).root),
 			batchFields,
@@ -173,7 +173,7 @@ export class Panel {
 			el(
 				'div',
 				{ class: 'bb-row' },
-				numberField('physics Hz', { min: 1, max: 500, step: 10, value: 300 }, (v) => actions.setTickRate(Math.max(1, Math.min(500, v)))).root,
+				numberField('physics Hz', { min: 1, max: 500, step: 10, value: DEFAULT_TICK_RATE }, (v) => actions.setTickRate(Math.max(1, Math.min(500, v)))).root,
 				select('render cap', [{ value: '0', label: 'display rate' }, { value: '60', label: '60 fps' }, { value: '30', label: '30 fps' }], '0', (v) => actions.setRenderCap(Number(v))).root,
 			),
 			withTitle(numberField('placement distance (m)', { min: 1, max: 200, step: 1, value: settings.placeDistance }, (v) => (settings.placeDistance = Math.max(v, 1))), 'How far in front of the camera balls and fields are placed. A surface closer than this takes over.'),
@@ -284,8 +284,8 @@ export class Panel {
 	}
 
 	setReadout(fps: number, hz: number, count: number): void {
-		const fill = count / MAX_BALLS;
+		const fill = count / this.capacity;
 		this.readout.classList.toggle('bb-warn', fill >= 0.9);
-		this.readout.textContent = `${fps.toFixed(0)} fps · ${hz.toFixed(0)} ticks/s · ${count.toLocaleString('en')} / ${MAX_BALLS.toLocaleString('en')}${fill >= 1 ? ' (full: recycling oldest)' : ''}`;
+		this.readout.textContent = `${fps.toFixed(0)} fps · ${hz.toFixed(0)} ticks/s · ${count.toLocaleString('en')} / ${this.capacity.toLocaleString('en')}${fill >= 1 ? ' (full: recycling oldest)' : ''}`;
 	}
 }

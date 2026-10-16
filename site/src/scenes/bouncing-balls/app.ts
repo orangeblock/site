@@ -1,27 +1,32 @@
+import { GpuBalls } from './gpu/gpu-balls';
+import { GpuSimulation } from './gpu/gpu-simulation';
 import { PointerTools, type Tool } from './interaction/pointer-tools';
+import { MAX_BALLS } from './physics/constants';
+import type { BallProp, Engine } from './physics/engine';
 import { Simulation } from './physics/simulation';
 import { DEFAULT_TEMPLATE, randomFill, spawnPattern } from './physics/spawn';
 import { AimGuide } from './render/aim-guide';
 import { FieldMarkers } from './render/field-markers';
 import { CameraRig, type CameraMode } from './render/camera-rig';
-import { View, type SurfaceHit } from './render/view';
+import { CpuBalls } from './render/cpu-balls';
+import { View, type BallMesh, type SurfaceHit } from './render/view';
 import { defaultSettings, type Settings } from './settings';
-import { Panel, type BallProp } from './ui/panel';
+import { Panel } from './ui/panel';
 import { worlds, type World } from './worlds';
 
 const RANDOM_BALLS = 5000;
 
+/** Which engine runs the physics: `Simulation` on the CPU, or `GpuSimulation` in WebGPU compute shaders. */
+export type EngineKind = 'cpu' | 'gpu';
+
 /**
  * Wires the three parts together and runs the frame loop:
  *
- *   physics (Simulation)  ←→  App  ←→  rendering (View, CameraRig)  and  UI (Panel, PointerTools)
+ *   physics (Engine)  ←→  App  ←→  rendering (View, CameraRig)  and  UI (Panel, PointerTools)
  *
- * The simulation never knows about three.js or the DOM, and the view and panel never change the simulation
- * directly. Everything goes through the methods here.
+ * The view and panel never change the simulation directly. Everything goes through the methods here.
  */
 export class App {
-	private readonly sim = new Simulation(worlds[0].colliders);
-	private readonly view: View;
 	private readonly rig: CameraRig;
 	private readonly tools: PointerTools;
 	private readonly guide = new AimGuide();
@@ -43,9 +48,32 @@ export class App {
 	private ticks = 0;
 	private sinceReadout = 0;
 
-	constructor(canvas: HTMLCanvasElement, panelRoot: HTMLElement) {
+	/**
+	 * Waits for the view's renderer to start, then builds the chosen engine on it. Throws if the GPU engine was
+	 * chosen but the renderer fell back to WebGL 2, which has no compute shaders; the view can then still be
+	 * used for the CPU engine.
+	 */
+	static async create(view: View, panelRoot: HTMLElement, kind: EngineKind): Promise<App> {
+		await view.renderer.init();
+		const canvas = view.canvas;
+		const colliders = worlds[0].colliders;
+		if (kind === 'gpu') {
+			if (!('isWebGPUBackend' in view.renderer.backend)) throw new Error('WebGPU failed to start, so the GPU engine cannot run.');
+			const sim = new GpuSimulation(view.renderer, colliders);
+			return new App(canvas, panelRoot, view, sim, new GpuBalls(sim));
+		}
+		return new App(canvas, panelRoot, view, new Simulation(colliders), new CpuBalls(MAX_BALLS));
+	}
+
+	private constructor(
+		canvas: HTMLCanvasElement,
+		panelRoot: HTMLElement,
+		private readonly view: View,
+		private readonly sim: Engine,
+		private readonly balls: BallMesh,
+	) {
 		canvas.tabIndex = 0;
-		this.view = new View(canvas);
+		this.view.setBalls(balls);
 		this.view.scene.add(this.guide.group, this.markers.group);
 
 		// Touch screens have no keyboard for the fly camera, so they start in orbit mode.
@@ -53,7 +81,7 @@ export class App {
 		const mode: CameraMode = touch ? 'orbit' : 'fly';
 		this.rig = new CameraRig(this.view.camera, canvas, mode);
 
-		this.panel = new Panel(panelRoot, worlds, this.settings, this.panelActions(), { cameraMode: mode, touch });
+		this.panel = new Panel(panelRoot, worlds, this.settings, this.panelActions(), { cameraMode: mode, touch, capacity: sim.store.capacity });
 
 		// Created after the rig, but its listeners run first because they are registered in the capture phase.
 		this.tools = new PointerTools({
@@ -104,14 +132,14 @@ export class App {
 		// Physics advances in fixed ticks however long this frame took, and rendering is a snapshot of the result.
 		this.ticks += this.sim.advance(dt);
 
+		this.sim.refreshSelected();
 		this.panel.refreshBall(this.sim.store);
 
 		this.sinceRender += dt;
 		if (this.renderCap > 0 && this.sinceRender < 1 / this.renderCap - 0.002) return;
 		this.sinceRender = 0;
-		this.view.sync(this.sim.store);
 		this.markers.sync(this.sim.forces.fields, this.selectedField);
-		this.view.render();
+		this.view.render(this.sim.store);
 		this.frames++;
 
 		this.sinceReadout += dt;
@@ -164,23 +192,9 @@ export class App {
 		for (const spec of spawnPattern(pattern, count, surface.point, surface.normal, this.settings.batch, Math.random, this.settings.randomise)) this.sim.addBall(spec);
 	}
 
-	/**
-	 * Changes one property of the selected ball. Position and velocity edit where the ball returns to on reset,
-	 * and also move it right away while the simulation is paused.
-	 */
 	private editBall(prop: BallProp, value: number): void {
-		const s = this.sim.store;
-		const i = s.selected;
-		if (i < 0) return;
-		const paused = !this.sim.running;
-		const origin = { x: s.ox, y: s.oy, z: s.oz, vx: s.ovx, vy: s.ovy, vz: s.ovz };
-		const live = { x: s.px, y: s.py, z: s.pz, vx: s.vx, vy: s.vy, vz: s.vz };
-		if (prop in origin) {
-			origin[prop as keyof typeof origin][i] = value;
-			if (paused) live[prop as keyof typeof live][i] = value;
-		} else {
-			s[prop as 'mass' | 'restitution' | 'radius'][i] = value;
-		}
+		const i = this.sim.store.selected;
+		if (i >= 0) this.sim.editBall(i, prop, value);
 	}
 
 	private randomize(): void {
@@ -225,7 +239,7 @@ export class App {
 			setCameraSpeed: (speed: number) => (this.rig.speed = speed),
 			setTickRate: (rate: number) => (this.sim.tickRate = rate),
 			setRenderCap: (fps: number) => (this.renderCap = fps),
-			setColourBySpeed: (enabled: boolean) => (this.view.colourBySpeed = enabled),
+			setColourBySpeed: (enabled: boolean) => (this.balls.colourBySpeed = enabled),
 			setFriction: (friction: number) => (this.sim.friction = friction),
 		};
 	}
