@@ -79,8 +79,8 @@ export class Panel {
 	) {
 		this.capacity = options.capacity;
 		this.onSetTool = actions.setTool;
-		// On a narrow screen the drawer would cover the scene, so it starts folded away there.
-		this.open = !window.matchMedia('(max-width: 640px)').matches;
+		// The drawer starts folded away, so it does not cover the scene; clicking a tool opens it.
+		this.open = false;
 
 		// --- Selected ball ---
 		const slider = (prop: BallProp, label: string, min: number, max: number, step: number) => {
