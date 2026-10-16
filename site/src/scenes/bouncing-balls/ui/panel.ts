@@ -204,6 +204,7 @@ export class Panel {
 			button('Clear all', actions.clearAll),
 			button('Randomize 5000', actions.randomize),
 			this.readout,
+			this.fullscreenButton(root),
 		);
 		const strip = el('div', { class: 'bb-tools' });
 		for (const { tool, label } of TOOLS) {
@@ -272,6 +273,26 @@ export class Panel {
 			b.classList.toggle('bb-on', tool === this.active);
 			b.classList.toggle('bb-open', tool === this.active && this.open);
 		}
+	}
+
+	/**
+	 * Toggles fullscreen for the scene together with its controls: the overlay's parent, which holds both.
+	 * Hidden where the browser cannot make an element fullscreen (Safari on iPhone).
+	 */
+	private fullscreenButton(root: HTMLElement): HTMLButtonElement {
+		const target = root.parentElement ?? root;
+		const b = el('button', { type: 'button', class: 'bb-fullscreen', hidden: !document.fullscreenEnabled });
+		const update = () => {
+			const on = document.fullscreenElement === target;
+			b.innerHTML = on ? icons.exitFullscreen : icons.fullscreen;
+			b.title = on ? 'Exit fullscreen' : 'Fullscreen';
+			b.setAttribute('aria-label', b.title);
+		};
+		b.addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : target.requestFullscreen()));
+		// Esc also leaves fullscreen, so follow the browser's state rather than the clicks.
+		document.addEventListener('fullscreenchange', update);
+		update();
+		return b;
 	}
 
 	setWallsAvailable(available: boolean): void {

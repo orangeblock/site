@@ -261,3 +261,9 @@
 	color: var(--faint);
 	cursor: not-allowed;
 }
+
+/* Icon-only button at the right end of the toolbar. */
+.bb-bar .bb-fullscreen {
+	padding: 2px 4px;
+	line-height: 0;
+}

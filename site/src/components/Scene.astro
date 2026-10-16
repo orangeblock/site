@@ -75,6 +75,14 @@ const { name, alt, poster, caption, wide = false, aspect = '16 / 9', start = 'vi
 			aspect-ratio: 3 / 4 !important;
 		}
 	}
+	/* In fullscreen the scene fills the screen instead of keeping its aspect ratio. */
+	.stage:fullscreen {
+		background: var(--bg);
+	}
+	.stage:fullscreen .scene {
+		aspect-ratio: auto !important;
+		height: 100%;
+	}
 	/* Covers the scene. It ignores the pointer, so the scene's own controls (and the scene itself) stay usable. */
 	.panel {
 		position: absolute;
