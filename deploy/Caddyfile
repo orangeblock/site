@@ -1,4 +1,4 @@
-:80 {
+datdan.net {
 	root * /var/www/site
 	encode zstd gzip
 	file_server
@@ -9,4 +9,8 @@
 
 	@unhashed not path /_astro/*
 	header @unhashed Cache-Control "no-cache"
+}
+
+www.datdan.net {
+	redir https://datdan.net{uri} permanent
 }
